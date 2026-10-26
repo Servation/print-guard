@@ -1,0 +1,101 @@
+# print-guard settings. `print-guard setup` copies this to config.toml and fills in
+# your printer. Every value below is the built-in default, so you only need to keep
+# the lines you change. The access code is NOT stored here: setup puts it in Windows
+# Credential Manager (or set the PRINT_GUARD_ACCESS_CODE environment variable).
+
+[printer]
+host = "192.168.1.XXX"          # printer IP (printer screen: Settings > WLAN, or `print-guard discover`)
+serial = "01P09XXXXXXXXXX"      # 15-character serial (sticker on the back, or `print-guard discover`)
+name = "P1S"
+mqtt_port = 8883
+camera_port = 6000
+tls_verify = true               # check the printer's Bambu certificate and serial; keep this on
+ca_file = ""                    # extra CA to trust (only the simulator needs this)
+
+[guard]
+mode = "dry-run"                # "dry-run" = alert only; "armed" = really pause/stop the printer
+exit_when_done = false          # exit after the print finishes or fails
+rearm_grace_minutes = 5.0       # after you resume a print the guard paused, vision waits this long
+stop_after_paused_minutes = 0.0 # stop a guard-paused print nobody touched after N minutes (0 = never)
+runs_dir = "runs"               # logs, snapshots and event journals go here
+
+[vision]
+enabled = true
+model_path = "models/obico-failure-detector.onnx"   # fetched by `print-guard download-model`
+interval_seconds = 10.0         # one frame scored every N seconds (the smoothing below assumes 10)
+sensitivity = 1.0               # higher = pauses sooner (1.5 is touchy, 0.7 is relaxed)
+detection_threshold = 0.08      # per-box confidence floor
+nms_threshold = 0.45
+warmup_frames = 30              # frames ignored at the start of each print (5 minutes)
+ewm_span = 12
+rolling_win_short = 310
+rolling_win_long = 7200
+threshold_low = 0.38            # below this the print is fine
+threshold_high = 0.78           # above this it is failing (warning level)
+short_mean_multiple = 3.8
+escalating_factor = 1.75        # failure level needs the score this many times higher than warning
+baseline_minutes = 15.0         # each print is judged against its own normal look, learned over this long
+noise_margin_sigmas = 3.0       # busy, flickery scenes (tree supports) need a jump this many noise-sigmas larger
+roi = [0.0, 0.0, 1.0, 1.0]      # [x0, y0, x1, y1] fractions of the frame to watch
+min_brightness = 20.0           # darker frames are skipped (chamber light off)
+action = "pause"                # what a confident camera failure does: pause, stop or notify
+
+[judge]
+# Optional Claude second opinion. Uses ANTHROPIC_API_KEY, an `ant auth login` profile,
+# or a key stored by `print-guard setup`. Roughly $0.02 to $0.05 per check.
+enabled = "auto"                # true, false, or "auto" (on when credentials exist)
+model = "claude-opus-5-5"
+effort = "medium"               # low, medium, high, xhigh, max
+confirm_vision = true           # ask Claude before acting on the local detector
+periodic_minutes = 10.0         # routine look for failures the detector can't see (0 = off)
+first_layer_check_layers = [2, 5]
+reference_minutes = 10.0        # the "before" frame for growth comparisons
+warn_confidence = 0.6           # notify at or above this
+pause_confidence = 0.85         # act at or above this
+stop_confidence = 0.95          # stop (not pause) for unrecoverable failures at or above this
+confirmations_for_periodic = 2  # periodic findings must repeat before acting
+max_calls_per_hour = 12
+on_error = "act"                # if Claude can't be reached while confirming: "act" or "alert"
+timeout_seconds = 120.0
+
+[thermal]
+enabled = true
+nozzle_over_c = 15.0            # nozzle this far above target ...
+nozzle_over_seconds = 20.0      # ... for this long
+bed_over_c = 10.0
+bed_over_seconds = 60.0
+nozzle_under_c = 25.0           # nozzle this far below target while printing ...
+nozzle_under_seconds = 120.0    # ... for this long
+over_action = "stop"
+under_action = "pause"
+
+[progress]
+stall_minutes = 30.0            # no layer/percent change while RUNNING
+stall_action = "notify"
+
+[filament]
+low_remaining_percent = 10      # warn when the active AMS spool drops to this
+runout_ensure_paused_seconds = 60.0
+
+[hms]
+# What to do about health codes the printer reports while it keeps printing.
+fatal_action = "pause"
+fatal_thermal_action = "stop"
+serious_action = "pause"
+common_action = "notify"
+info_action = "log"
+act_after_seconds = 20.0        # give the printer time to handle its own error first
+ignore = []                     # codes to ignore, e.g. ["0300_0D00_0002_0001"]
+overrides = {}                  # per-code action, e.g. { "0700_2000_0002_0001" = "notify" }
+
+[connection]
+offline_alert_seconds = 90.0
+camera_alert_seconds = 180.0
+
+[notify]
+desktop = true
+alarm_sound = true              # critical alerts loop the Windows alarm sound
+ntfy_server = "https://ntfy.sh"
+ntfy_topic = ""                 # phone push: subscribe to this topic in the ntfy app (keep it unguessable)
+ntfy_min_level = "warning"      # info, warning or critical
+attach_snapshots = true

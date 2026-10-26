@@ -1,0 +1,11 @@
+# Local settings can hold the printer's IP, serial and notification topic. Never commit them.
+config.toml
+# Runtime output: logs, snapshots, event journals.
+runs/
+# The failure-detection model is ~200 MB and downloaded by `print-guard download-model`.
+models/*.onnx
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/

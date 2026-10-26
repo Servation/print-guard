@@ -1,0 +1,49 @@
+# print-guard: watches a Bambu Lab P1S over the LAN and pauses or stops a print
+# when it detects a failure. Managed with uv (`uv sync`, `uv run print-guard ...`).
+[project]
+name = "print-guard"
+version = "0.1.0"
+description = "Watch a Bambu Lab P1S on the LAN and pause or stop failing prints"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "paho-mqtt>=2.1,<3",
+    "onnxruntime>=1.20",
+    "opencv-python-headless>=4.10",
+    "numpy>=2.0",
+    "rich>=13.9",
+    "keyring>=25.0",
+    "windows-toasts>=1.3; sys_platform == 'win32'",
+    "anthropic>=2.3",
+    # Only the simulator needs it (self-signed TLS for the fake printer).
+    "cryptography>=43",
+]
+
+[project.scripts]
+print-guard = "print_guard.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/print_guard"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]
