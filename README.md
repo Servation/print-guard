@@ -15,10 +15,10 @@ Bambu Studio.
 
 ![The dashboard right after print-guard paused a failing print](docs/dashboard.svg)
 
-```
- P1S  --MQTT (TLS 8883)-->  status, errors, temps, AMS  --> telemetry checks --+
-      --camera (TLS 6000)-> JPEG frames --> spaghetti model --(+ Claude)-------+--> guard --> pause / stop / notify
-```
+**How it works:** it reads the printer's status (errors, temperatures, AMS) over
+the printer's local MQTT connection, and every 10 seconds it scores a camera frame
+with a spaghetti detector, optionally double-checked by Claude. When a check is
+confident something is wrong, the guard pauses or stops the print and alerts you.
 
 > **Status: experimental (v0.1).** It is tested end to end against a built-in
 > simulator that speaks the printer's protocols, and in dry-run on a real P1S
