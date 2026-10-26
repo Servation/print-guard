@@ -40,6 +40,8 @@ UNSURE_COOLDOWN = 300.0
 RECHECK_DELAY = 90.0
 WARNING_RENOTIFY = 1800.0
 WARNING_CONFIRM_INTERVAL = 600.0
+NOT_PRINTING = {"PAUSE": "paused", "FINISH": "finished", "FAILED": "stopped", "PREPARE": "preparing",
+                "IDLE": "idle", "UNKNOWN": "waiting for status"}
 
 
 @dataclass
@@ -166,7 +168,9 @@ class VisionWorker:
             self.status.judge = "on" if self.judge.enabled else f"off ({self.judge.disabled_reason})"
             self.status.judge_cost = self.judge.total_cost
         if not state.is_printing_layers:
-            self.status.state = f"not scoring: printer {state.gcode_state} ({state.stage_name})"
+            what = state.stage_name if state.is_running else NOT_PRINTING.get(state.gcode_state,
+                                                                               state.gcode_state.lower())
+            self.status.state = f"not scoring while {what}"
             return
         if now < self._grace_until:
             self.status.state = f"grace period after resume ({(self._grace_until - now) / 60:.1f} min left)"

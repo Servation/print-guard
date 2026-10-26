@@ -152,7 +152,10 @@ class Guard:
         old, new = prev.gcode_state, state.gcode_state
         if old == new:
             return
-        log.info("printer state %s -> %s (%s)", old, new, state.stage_name)
+        stage = state.stage_name
+        if new == "PAUSE" and state.stage == USER_PAUSE_STAGE and now <= self._expect_pause_until:
+            stage = "paused by print-guard"  # the printer reports our pause as a user pause
+        log.info("printer state %s -> %s (%s)", old, new, stage)
         self.journal.write("state", old=old, new=new, stage=state.stage_name, layer=state.layer)
         if new == "PAUSE" and old != "PAUSE":
             self._paused_count += 1

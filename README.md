@@ -1,17 +1,36 @@
 # print-guard
 
+[![tests](https://github.com/Servation/print-guard/actions/workflows/tests.yml/badge.svg)](https://github.com/Servation/print-guard/actions/workflows/tests.yml)
+![status: experimental](https://img.shields.io/badge/status-experimental-orange)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Watches a Bambu Lab P1S on your LAN while it prints and steps in when something
 goes wrong: it **pauses** the print on a confident failure, **stops** it on a
 critical one, and always tells you (Windows notification, optional phone push).
 A dry-run mode only alerts, so you can trust it before you arm it.
 
-It runs on your PC, talks to the printer directly over the LAN (no cloud), and
-needs no changes to Bambu Studio.
+It runs on your PC as one program (no Docker, no Home Assistant, no cloud
+service), talks to the printer directly over the LAN, and needs no changes to
+Bambu Studio.
+
+![The dashboard right after print-guard paused a failing print](docs/dashboard.svg)
 
 ```
  P1S  --MQTT (TLS 8883)-->  status, errors, temps, AMS  --> telemetry checks --+
       --camera (TLS 6000)-> JPEG frames --> spaghetti model --(+ Claude)-------+--> guard --> pause / stop / notify
 ```
+
+> **Status: experimental (v0.1).** It is tested end to end against a built-in
+> simulator that speaks the printer's protocols, and in dry-run on a real P1S
+> during a long print. Automatically pausing a *real* failure has not been proven
+> yet. Start in dry-run, and test it on a scrap print before trusting it with a
+> long one.
+>
+> Not affiliated with Bambu Lab or Obico. It can pause and stop your printer;
+> use it at your own risk.
+
+**Printers:** built and tested for the **P1S**. The P1P and A1 series use the same
+LAN protocols and may work, but are untested.
 
 ## What it catches, and how well
 
@@ -59,15 +78,24 @@ print-guard never changes printer settings itself.
 
 ## Install
 
-Needs [uv](https://docs.astral.sh/uv/) (already on this PC) and Windows 10/11.
+Needs Windows 10 or 11, a PC on the same network as the printer, and
+[uv](https://docs.astral.sh/uv/getting-started/installation/) (it installs the
+right Python for you).
 
 ```bash
-cd D:\tools\print-guard
+git clone https://github.com/Servation/print-guard
+cd print-guard
 uv sync
 uv run print-guard download-model
 ```
 
 `download-model` fetches Obico's ~200 MB model and verifies its SHA-256.
+
+**What leaves your PC:** nothing, by default. print-guard talks only to your
+printer. The two exceptions are opt-in: the Claude judge sends camera frames to
+Anthropic's API, and ntfy phone alerts send alert text and snapshots to the ntfy
+server you configure. Logs stay in `runs/`; they never contain the access code
+and show the serial masked, but they do include your printer's local IP.
 
 ## Set up your printer
 
@@ -167,6 +195,10 @@ Each run gets a folder under `runs/`:
 * `events.jsonl`: findings, state changes and actions, one JSON object per line;
 * `latest.jpg`: the newest scored camera frame with detection boxes;
 * `snapshots/`: the frames attached to alerts.
+
+An alert's snapshot marks what the detector saw (this one is from the simulator):
+
+![A failure snapshot with detection boxes and confidences](docs/failure-snapshot.jpg)
 
 **After the guard pauses a print:** look at the print (snapshot in the alert, or
 walk over). Resume on the printer if it's fine: print-guard re-arms after a 5
@@ -270,7 +302,16 @@ uv run ruff check src tests
 ```
 
 The end-to-end tests drive real TLS sockets, the real MQTT client, the camera
-reader and the detector against the simulator in `src/print_guard/sim/`.
+reader and the detector against the simulator in `src/print_guard/sim/`. Tests
+that need the detector skip themselves until `download-model` has run. GitHub
+Actions runs the whole suite on Windows for every push.
+
+## Reporting problems
+
+Issues are welcome, especially from other printers and firmware versions. Please
+include your printer model and firmware, what you expected, and the relevant part
+of `guard.log` (it never contains your access code, but check it before posting:
+it includes your printer's local IP).
 
 ## Other options considered
 

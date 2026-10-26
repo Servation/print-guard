@@ -1,0 +1,44 @@
+# Lint and the full test suite on Windows, the platform print-guard targets.
+# The end-to-end tests run against the built-in fake printer, so no hardware is needed.
+# The ~200 MB detector model is cached between runs; if it can't be downloaded,
+# the tests that need it skip themselves instead of failing.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check src tests
+
+      - name: Restore detector model
+        id: model
+        uses: actions/cache@v4
+        with:
+          path: models/obico-failure-detector.onnx
+          key: obico-model-0a6ebd8e30dbf6a4
+
+      - name: Download detector model
+        if: steps.model.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: uv run print-guard download-model
+
+      - name: Tests
+        run: uv run pytest -q
